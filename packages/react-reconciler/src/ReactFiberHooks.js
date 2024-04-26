@@ -250,7 +250,7 @@ type BasicStateAction<S> = (S => S) | S;
 type Dispatch<A> = A => void;
 
 // These are set right before calling the component.
-let renderLanes: Lanes = NoLanes;
+let renderLanes: Lanes = NoLanes;// 在 beginWork阶段的renderWithHooks会设置本次调和的lanes，renderWithHooks结束时设置为NoLanes，在hooks的更新中会根据该值来确定update是否应该执行。
 // The work-in-progress fiber. I've named it differently to distinguish it from
 // the work-in-progress hook.
 let currentlyRenderingFiber: Fiber = (null: any);
@@ -531,6 +531,7 @@ export function renderWithHooks<Props, SecondArg>(
       ReactCurrentDispatcher.current = HooksDispatcherOnMountInDEV;
     }
   } else {
+    // 标识hooks对应的dispatch
     ReactCurrentDispatcher.current =
       current === null || current.memoizedState === null
         ? HooksDispatcherOnMount
@@ -603,7 +604,7 @@ export function renderWithHooks<Props, SecondArg>(
 
   return children;
 }
-
+// 还原全局变量
 function finishRenderingHooks<Props, SecondArg>(
   current: Fiber | null,
   workInProgress: Fiber,
@@ -1201,13 +1202,13 @@ function updateReducerImpl<S, A>(
     );
   }
 
-  queue.lastRenderedReducer = reducer;
+  queue.lastRenderedReducer = reducer; // 计算state的reducer，reducer = （state, action） => {}
 
   // The last rebase update that is NOT part of the base state.
   let baseQueue = hook.baseQueue;
 
   // The last pending update that hasn't been processed yet.
-  const pendingQueue = queue.pending;
+  const pendingQueue = queue.pending; // pending，未处理的update
   if (pendingQueue !== null) {
     // We have new updates that haven't been processed yet.
     // We'll add them to the base queue.
@@ -1264,7 +1265,7 @@ function updateReducerImpl<S, A>(
       const shouldSkipUpdate = isHiddenUpdate
         ? !isSubsetOfLanes(getWorkInProgressRootRenderLanes(), updateLane)
         : !isSubsetOfLanes(renderLanes, updateLane);
-
+      // 是否应该跳过该update
       if (shouldSkipUpdate) {
         // Priority is insufficient. Skip this update. If this is the first
         // skipped update, the previous update/state is the new base
@@ -1396,6 +1397,7 @@ function updateReducerImpl<S, A>(
 
     // Mark that the fiber performed work, but only if the new state is
     // different from the current state.
+    // 如果新老state不相等，就标记收到了更新
     if (!is(newState, hook.memoizedState)) {
       markWorkInProgressReceivedUpdate();
 
@@ -1416,8 +1418,8 @@ function updateReducerImpl<S, A>(
       }
     }
 
-    hook.memoizedState = newState;
-    hook.baseState = newBaseState;
+    hook.memoizedState = newState; // 新的state，
+    hook.baseState = newBaseState; // 新的baseState
     hook.baseQueue = newBaseQueueLast;
 
     queue.lastRenderedState = newState;
@@ -1782,7 +1784,7 @@ function mountState<S>(
     currentlyRenderingFiber,
     queue,
   ): any);
-  queue.dispatch = dispatch;
+  queue.dispatch = dispatch; // updateState的 dispatch服用的这个方法
   return [hook.memoizedState, dispatch];
 }
 
@@ -2762,6 +2764,7 @@ function updateDeferredValueImpl<T>(
     }
 
     const shouldDeferValue = !includesOnlyNonUrgentLanes(renderLanes);
+    // 如果renderLanes中没有非紧急lanes
     if (shouldDeferValue) {
       // This is an urgent update. Since the value has changed, keep using the
       // previous value and spawn a deferred render to update it later.
@@ -2778,6 +2781,7 @@ function updateDeferredValueImpl<T>(
       // because we did not render a new value.
       return prevValue;
     } else {
+      // 非紧急更新时显示最新值，不延迟
       // This is not an urgent update, so we can use the latest value regardless
       // of what it is. No need to defer it.
 
@@ -2794,12 +2798,12 @@ function startTransition<S>(
   queue: UpdateQueue<S | Thenable<S>, BasicStateAction<S | Thenable<S>>>,
   pendingState: S,
   finishedState: S,
-  callback: () => mixed,
+  callback: () => mixed, // 业务设置的回调函数
   options?: StartTransitionOptions,
 ): void {
   const previousPriority = getCurrentUpdatePriority();
   setCurrentUpdatePriority(
-    higherEventPriority(previousPriority, ContinuousEventPriority),
+    higherEventPriority(previousPriority, ContinuousEventPriority), // 获取高的优先级，ContinuousEventPriority为同步优先级
   );
 
   const prevTransition = ReactCurrentBatchConfig.transition;
@@ -2815,10 +2819,10 @@ function startTransition<S>(
     // diverges; for example, both an optimistic update and this one should
     // share the same lane.
     ReactCurrentBatchConfig.transition = currentTransition;
-    dispatchOptimisticSetState(fiber, false, queue, pendingState);
+    dispatchOptimisticSetState(fiber, false, queue, pendingState); // pendingState
   } else {
     ReactCurrentBatchConfig.transition = null;
-    dispatchSetState(fiber, queue, pendingState);
+    dispatchSetState(fiber, queue, pendingState); // pendingState： 在mountTransition中设置为true，表示处理中pending
     ReactCurrentBatchConfig.transition = currentTransition;
   }
 
@@ -2864,8 +2868,11 @@ function startTransition<S>(
       }
     } else {
       // Async actions are not enabled.
-      dispatchSetState(fiber, queue, finishedState);
-      callback();
+      // 关闭pending，表示开始处理
+      // 会根据ReactCurrentBatchConfig.transition来判断是否存在transition，同时给本次更新分配transition的优先级
+      dispatchSetState(fiber, queue, finishedState); 
+      
+      callback(); // 真正执行业务回调的地方
     }
   } catch (error) {
     if (enableAsyncActions) {
@@ -2884,6 +2891,7 @@ function startTransition<S>(
       throw error;
     }
   } finally {
+    // 还原优先级，因为前端将优先级设置为transition的优先级了
     setCurrentUpdatePriority(previousPriority);
 
     ReactCurrentBatchConfig.transition = prevTransition;
@@ -2990,7 +2998,7 @@ function mountTransition(): [
   boolean,
   (callback: () => void, options?: StartTransitionOptions) => void,
 ] {
-  const stateHook = mountStateImpl((false: Thenable<boolean> | boolean));
+  const stateHook = mountStateImpl((false: Thenable<boolean> | boolean)); 
   // The `start` method never changes.
   const start = startTransition.bind(
     null,
@@ -3001,7 +3009,7 @@ function mountTransition(): [
   );
   const hook = mountWorkInProgressHook();
   hook.memoizedState = start;
-  return [false, start];
+  return [false, start];  // isPending的默认值为false 
 }
 
 function updateTransition(): [
@@ -3181,7 +3189,7 @@ function dispatchReducerAction<S, A>(
   } else {
     const root = enqueueConcurrentHookUpdate(fiber, queue, update, lane);
     if (root !== null) {
-      scheduleUpdateOnFiber(root, fiber, lane);
+      scheduleUpdateOnFiber(root, fiber, lane); /
       entangleTransitionUpdate(root, queue, lane);
     }
   }
@@ -3204,7 +3212,7 @@ function dispatchSetState<S, A>(
     }
   }
 
-  const lane = requestUpdateLane(fiber);
+  const lane = requestUpdateLane(fiber); // 获取优先级， requestUpdateLane 中如果
 
   const update: Update<S, A> = {
     lane,
@@ -3216,6 +3224,8 @@ function dispatchSetState<S, A>(
   };
 
   if (isRenderPhaseUpdate(fiber)) {
+    //  如果实在当前fiber的render阶段，触发的dispatchSetState就走该逻辑
+    // 直接把udpate添加在queue上，不需要单独调度
     enqueueRenderPhaseUpdate(queue, update);
   } else {
     const alternate = fiber.alternate;
@@ -3264,7 +3274,7 @@ function dispatchSetState<S, A>(
 
     const root = enqueueConcurrentHookUpdate(fiber, queue, update, lane);
     if (root !== null) {
-      scheduleUpdateOnFiber(root, fiber, lane);
+      scheduleUpdateOnFiber(root, fiber, lane); // </boolean> 添加lane到root的pendingLanes
       entangleTransitionUpdate(root, queue, lane);
     }
   }
@@ -3394,7 +3404,7 @@ function entangleTransitionUpdate<S, A>(
   queue: UpdateQueue<S, A>,
   lane: Lane,
 ): void {
-  if (isTransitionLane(lane)) {
+  if (isTransitionLane(lane)) { // 如果是useTransition
     let queueLanes = queue.lanes;
 
     // If any entangled lanes are no longer pending on the root, then they

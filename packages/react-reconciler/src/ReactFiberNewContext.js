@@ -124,8 +124,10 @@ export function pushProvider<T>(
       context._currentRenderer = rendererSigil;
     }
   } else {
+    // context上一个context.provider的value， 在completeWork阶段通过popProvider恢复context的value，并将valueCursor指向最近的父级context.Provider组件
+    // valueCursor.current也是上一个provider的value
     push(valueCursor, context._currentValue2, providerFiber);
-
+    // 给context设置新值
     context._currentValue2 = nextValue;
     if (__DEV__) {
       push(renderer2CursorDEV, context._currentRenderer2, providerFiber);
@@ -176,6 +178,7 @@ export function scheduleContextWorkOnParentPath(
   propagationRoot: Fiber,
 ) {
   // Update the child lanes of all the ancestors, including the alternates.
+  // 在当前节点的childLanes上添加renderLanes，以及alternate上
   let node = parent;
   while (node !== null) {
     const alternate = node.alternate;
@@ -262,6 +265,7 @@ function propagateContextChange_eager<T>(
           // Match! Schedule an update on this fiber.
           if (fiber.tag === ClassComponent) {
             // Schedule a force update on the work-in-progress.
+            // 如果是class组件，会创建一个update并标记为forceUpdate
             const lane = pickArbitraryLane(renderLanes);
             const update = createUpdate(lane);
             update.tag = ForceUpdate;
@@ -287,7 +291,7 @@ function propagateContextChange_eager<T>(
               sharedQueue.pending = update;
             }
           }
-
+          // 在fiber节点上添加lanes
           fiber.lanes = mergeLanes(fiber.lanes, renderLanes);
           const alternate = fiber.alternate;
           if (alternate !== null) {
@@ -300,6 +304,7 @@ function propagateContextChange_eager<T>(
           );
 
           // Mark the updated lanes on the list, too.
+          // 在fiber.dependencies.lanes上添加renderLanes
           list.lanes = mergeLanes(list.lanes, renderLanes);
 
           // Since we already found a match, we can stop traversing the
@@ -310,6 +315,7 @@ function propagateContextChange_eager<T>(
       }
     } else if (fiber.tag === ContextProvider) {
       // Don't scan deeper if this is a matching provider
+      // 如果context的类型相同，就不向下
       nextFiber = fiber.type === workInProgress.type ? null : fiber.child;
     } else if (fiber.tag === DehydratedFragment) {
       // If a dehydrated suspense boundary is in this subtree, we don't know
@@ -755,6 +761,9 @@ function readContextForConsumer<T>(
 
       // This is the first dependency for this component. Create a new list.
       lastContextDependency = contextItem;
+      // 关于dependencies的理解：
+      // 1. 通过useContext获取值时，会在fiber上形成一个链表，组件可能通过useContext获取多个context的value，所以会在 propagateContextChange_eager 函数中遍历fiber.dependencies，如果context相同就添加renderLanes在fiber上，
+      // 2. 通过Cusumer获取值时，也会有dependencies但是只有一个节点
       consumer.dependencies = {
         lanes: NoLanes,
         firstContext: contextItem,

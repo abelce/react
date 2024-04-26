@@ -203,6 +203,7 @@ function workLoop(initialTime: number) {
       // $FlowFixMe[incompatible-use] found when upgrading Flow
       currentTask.callback = null;
       // $FlowFixMe[incompatible-use] found when upgrading Flow
+      // 正在执行的任务的调度优先级
       currentPriorityLevel = currentTask.priorityLevel;
       // $FlowFixMe[incompatible-use] found when upgrading Flow
       const didUserCallbackTimeout = currentTask.expirationTime <= currentTime;
@@ -216,11 +217,13 @@ function workLoop(initialTime: number) {
         // If a continuation is returned, immediately yield to the main thread
         // regardless of how much time is left in the current time slice.
         // $FlowFixMe[incompatible-use] found when upgrading Flow
+        // continuationCallback 存在表示任务也因为超时被中断，下次从中断的地方重新执行
         currentTask.callback = continuationCallback;
         if (enableProfiling) {
           // $FlowFixMe[incompatible-call] found when upgrading Flow
           markTaskYield(currentTask, currentTime);
         }
+        // 再次将过期的task加入taskQueue
         advanceTimers(currentTime);
         return true;
       } else {
@@ -231,6 +234,7 @@ function workLoop(initialTime: number) {
           currentTask.isQueued = false;
         }
         if (currentTask === peek(taskQueue)) {
+          // 任务执行完毕后删除任务
           pop(taskQueue);
         }
         advanceTimers(currentTime);
@@ -244,6 +248,7 @@ function workLoop(initialTime: number) {
   if (currentTask !== null) {
     return true;
   } else {
+    //taskQueue执行完后，将排队任务里的第一个任务拿出来进行倒计时，用于触发下一次调度
     const firstTimer = peek(timerQueue);
     if (firstTimer !== null) {
       requestHostTimeout(handleTimeout, firstTimer.startTime - currentTime);
@@ -403,6 +408,7 @@ function unstable_scheduleCallback(
     // wait until the next time we yield.
     if (!isHostCallbackScheduled && !isPerformingWork) {
       isHostCallbackScheduled = true;
+      // 开始调度
       requestHostCallback();
     }
   }

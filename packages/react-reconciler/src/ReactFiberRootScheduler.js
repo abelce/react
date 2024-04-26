@@ -115,6 +115,7 @@ export function ensureRootIsScheduled(root: FiberRoot): void {
       scheduleImmediateTask(processRootScheduleInMicrotask);
     }
   } else {
+    // 如果没有开始调度，则开启调度
     if (!didScheduleMicrotask) {
       didScheduleMicrotask = true;
       scheduleImmediateTask(processRootScheduleInMicrotask);
@@ -241,6 +242,7 @@ function processRootScheduleInMicrotask() {
 
   const currentTime = now();
 
+  // 如果应用中包含多个react 跟节点，这个就需要循环处理
   let prev = null;
   let root = firstScheduledRoot;
   while (root !== null) {
@@ -313,12 +315,13 @@ function scheduleTaskForRootDuringMicrotask(
   // Determine the next lanes to work on, and their priority.
   const workInProgressRoot = getWorkInProgressRoot();
   const workInProgressRootRenderLanes = getWorkInProgressRootRenderLanes();
+  // workInProgressRootRenderLanes 从渲染的lanes中获取优先级最高的lanes
   const nextLanes = getNextLanes(
     root,
     root === workInProgressRoot ? workInProgressRootRenderLanes : NoLanes,
   );
 
-  const existingCallbackNode = root.callbackNode;
+  const existingCallbackNode = root.callbackNode; // task
   if (
     // Check if there's nothing to work on
     nextLanes === NoLanes ||
@@ -366,6 +369,7 @@ function scheduleTaskForRootDuringMicrotask(
         existingCallbackNode !== fakeActCallbackNode
       )
     ) {
+      // 如果当前的优先级和root上当前存在的优先级一样，直接复用task；否则通过cancelCallback取消task
       // The priority hasn't changed. We can reuse the existing task.
       return newCallbackPriority;
     } else {
@@ -392,13 +396,14 @@ function scheduleTaskForRootDuringMicrotask(
         break;
     }
 
+    // performConcurrentWorkOnRoot 就是真实的调和过程
     const newCallbackNode = scheduleCallback(
       schedulerPriorityLevel,
       performConcurrentWorkOnRoot.bind(null, root),
     );
 
-    root.callbackPriority = newCallbackPriority;
-    root.callbackNode = newCallbackNode;
+    root.callbackPriority = newCallbackPriority; // task对应的lane，不是调度的优先级
+    root.callbackNode = newCallbackNode; // newCallbackNode 就是 newTask
     return newCallbackPriority;
   }
 }
@@ -508,7 +513,8 @@ export function requestTransitionLane(
   // over. Our heuristic for that is whenever we enter a concurrent work loop.
   if (currentEventTransitionLane === NoLane) {
     // All transitions within the same event are assigned the same lane.
-    currentEventTransitionLane = claimNextTransitionLane();
+    // 根据上一次transition分配的优先级来分配下一次的lane，从TransitionLane1到TransitionLane15，如果已经就是TransitionLane15了就从TransitionLane1开始分配，一直循环
+    currentEventTransitionLane = claimNextTransitionLane(); 
   }
   return currentEventTransitionLane;
 }

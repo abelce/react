@@ -737,7 +737,7 @@ function cutOffTailIfNeeded(
     }
   }
 }
-
+// 合并所有child的childLanes到completedWork上，同时设置child.return = completedWork
 function bubbleProperties(completedWork: Fiber) {
   const didBailout =
     completedWork.alternate !== null &&
@@ -855,7 +855,7 @@ function bubbleProperties(completedWork: Fiber) {
 
     completedWork.subtreeFlags |= subtreeFlags;
   }
-
+  // 合并childLanes
   completedWork.childLanes = newChildLanes;
 
   return didBailout;
@@ -1259,6 +1259,7 @@ function completeWork(
           prepareToHydrateHostInstance(workInProgress, currentHostContext);
         } else {
           const rootContainerInstance = getRootHostContainer();
+          // 创建真实DOM
           const instance = createInstance(
             type,
             newProps,
@@ -1268,12 +1269,14 @@ function completeWork(
           );
           // TODO: For persistent renderers, we should pass children as part
           // of the initial instance creation
+          // 添加子元素的DOM
           appendAllChildren(instance, workInProgress, false, false);
           workInProgress.stateNode = instance;
 
           // Certain renderers require commit-time effects for initial mount.
           // (eg DOM renderer supports auto-focus for certain elements).
           // Make sure such renderers get scheduled for later work.
+          // finalizeInitialChildren 设置元素的属性
           if (
             finalizeInitialChildren(
               instance,
@@ -1482,6 +1485,7 @@ function completeWork(
       } else {
         context = workInProgress.type._context;
       }
+      // 推出context的provider数据，
       popProvider(context, workInProgress);
       bubbleProperties(workInProgress);
       return null;

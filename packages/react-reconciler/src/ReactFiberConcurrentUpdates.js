@@ -86,6 +86,7 @@ export function getConcurrentlyUpdatedLanes(): Lanes {
   return concurrentlyUpdatedLanes;
 }
 
+// 添加update，并且合并lane到fiber以及fiber.alternate
 function enqueueUpdate(
   fiber: Fiber,
   queue: ConcurrentQueue | null,
@@ -110,7 +111,8 @@ function enqueueUpdate(
     alternate.lanes = mergeLanes(alternate.lanes, lane);
   }
 }
-
+// 添加update，并且merge lane到fiber已经fiber.alternate
+// 返回fiber的root节点
 export function enqueueConcurrentHookUpdate<S, A>(
   fiber: Fiber,
   queue: HookQueue<S, A>,

@@ -19,7 +19,7 @@ export function startTransition(
   scope: () => void,
   options?: StartTransitionOptions,
 ) {
-  const prevTransition = ReactCurrentBatchConfig.transition;
+  const prevTransition = ReactCurrentBatchConfig.transition; //
   // Each renderer registers a callback to receive the return value of
   // the scope function. This is used to implement async actions.
   const callbacks = new Set<(BatchConfigTransition, mixed) => mixed>();

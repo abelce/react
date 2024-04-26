@@ -59,7 +59,7 @@ function pop<T>(cursor: StackCursor<T>, fiber: Fiber): void {
 function push<T>(cursor: StackCursor<T>, value: T, fiber: Fiber): void {
   index++;
 
-  valueStack[index] = cursor.current;
+  valueStack[index] = cursor.current; // cursor.current 为context的value
 
   if (__DEV__) {
     fiberStack[index] = fiber;

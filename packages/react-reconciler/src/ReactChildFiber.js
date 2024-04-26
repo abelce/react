@@ -423,7 +423,7 @@ function createChildReconciler(
       returnFiber.deletions = [childToDelete];
       returnFiber.flags |= ChildDeletion;
     } else {
-      deletions.push(childToDelete);
+      deletions.push(childToDelete); // 添加需要删除的fiber节点
     }
   }
 
@@ -510,6 +510,7 @@ function createChildReconciler(
     // This is simpler for the single child case. We only need to do a
     // placement for inserting new children.
     if (shouldTrackSideEffects && newFiber.alternate === null) {
+      // 如果是新建，就添加 Placement 标识
       newFiber.flags |= Placement | PlacementDEV;
     }
     return newFiber;
@@ -1525,8 +1526,12 @@ function createChildReconciler(
               elementType.$$typeof === REACT_LAZY_TYPE &&
               resolveLazy(elementType) === child.type)
           ) {
+            // 元素类型相等时
+            // 1. 删除多余的fiber节点
             deleteRemainingChildren(returnFiber, child.sibling);
+            // 复用节点
             const existing = useFiber(child, element.props);
+            // 设置workinprogress.ref
             coerceRef(returnFiber, child, existing, element);
             existing.return = returnFiber;
             if (__DEV__) {
@@ -1540,11 +1545,13 @@ function createChildReconciler(
         deleteRemainingChildren(returnFiber, child);
         break;
       } else {
+        // 删除
         deleteChild(returnFiber, child);
       }
       child = child.sibling;
     }
 
+    // 如果以前节点不存在就创建fiber
     if (element.type === REACT_FRAGMENT_TYPE) {
       const created = createFiberFromFragment(
         element.props.children,
@@ -1754,6 +1761,7 @@ function createChildReconciler(
       }
     }
 
+    // 如果都不匹配删除该节点
     // Remaining cases are all treated as empty.
     return deleteRemainingChildren(returnFiber, currentFirstChild);
   }

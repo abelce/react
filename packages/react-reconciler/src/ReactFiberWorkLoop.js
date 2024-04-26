@@ -624,7 +624,7 @@ export function getCurrentTime(): number {
 export function requestUpdateLane(fiber: Fiber): Lane {
   // Special cases
   const mode = fiber.mode;
-  if ((mode & ConcurrentMode) === NoMode) {
+  if ((mode & ConcurrentMode) === NoMode) { // 如果没有开启并发模式，就返回同步优先级
     return (SyncLane: Lane);
   } else if (
     (executionContext & RenderContext) !== NoContext &&
@@ -642,15 +642,15 @@ export function requestUpdateLane(fiber: Fiber): Lane {
     return pickArbitraryLane(workInProgressRootRenderLanes);
   }
 
-  const transition = requestCurrentTransition();
-  if (transition !== null) {
+  const transition = requestCurrentTransition(); // 就是获取 ReactCurrentBatchConfig.transition，在startTransition里面添加的
+  if (transition !== null) {// 当前存在的transition， 就获取对应的lane
     if (__DEV__) {
       const batchConfigTransition = ReactCurrentBatchConfig.transition;
       if (!batchConfigTransition._updatedFibers) {
         batchConfigTransition._updatedFibers = new Set();
       }
 
-      batchConfigTransition._updatedFibers.add(fiber);
+      batchConfigTransition._updatedFibers.add(fiber); // 添加需要transition更新的fiber
     }
 
     const actionScopeLane = peekEntangledActionLane();
@@ -660,7 +660,7 @@ export function requestUpdateLane(fiber: Fiber): Lane {
       : // We may or may not be inside an async action scope. If we are, this
         // is the first update in that scope. Either way, we need to get a
         // fresh transition lane.
-        requestTransitionLane(transition);
+        requestTransitionLane(transition); // requestTransitionLane 中为transition分配优先级
   }
 
   // Updates originating inside certain React methods, like flushSync, have
@@ -769,6 +769,9 @@ export function scheduleUpdateOnFiber(
   ) {
     // The incoming update might unblock the current render. Interrupt the
     // current attempt and restart from the top.
+  // 设置workInProgressRoot = root
+  // 根据root.current 创建workInProgress
+  // 设置workInProgressRootRenderLanes = lanes
     prepareFreshStack(root, NoLanes);
     markRootSuspended(
       root,
@@ -778,6 +781,7 @@ export function scheduleUpdateOnFiber(
   }
 
   // Mark that the root has a pending update.
+  // 在root.pendingLanes上添加 lane
   markRootUpdated(root, lane);
 
   if (
@@ -792,6 +796,7 @@ export function scheduleUpdateOnFiber(
     warnAboutRenderPhaseUpdatesInDEV(fiber);
 
     // Track lanes that were updated during the render phase
+    // 合并lane到workInProgressRootRenderPhaseUpdatedLanes上
     workInProgressRootRenderPhaseUpdatedLanes = mergeLanes(
       workInProgressRootRenderPhaseUpdatedLanes,
       lane,
@@ -862,6 +867,7 @@ export function scheduleUpdateOnFiber(
       }
     }
 
+    // 触发root的调度
     ensureRootIsScheduled(root);
     if (
       lane === SyncLane &&
@@ -909,7 +915,7 @@ export function isUnsafeClassRenderPhaseUpdate(fiber: Fiber): boolean {
 // goes through Scheduler.
 export function performConcurrentWorkOnRoot(
   root: FiberRoot,
-  didTimeout: boolean,
+  didTimeout: boolean, // 表示task是否过期，过期之后就会同步执行
 ): RenderTaskFn | null {
   if (enableProfilerTimer && enableProfilerNestedUpdatePhase) {
     resetNestedUpdateFlag();
@@ -983,6 +989,7 @@ export function performConcurrentWorkOnRoot(
           renderWasConcurrent &&
           !isRenderConsistentWithExternalStores(finishedWork)
         ) {
+          // 如果状态不一致，就同步渲染节点
           // A store was mutated in an interleaved event. Render again,
           // synchronously, to block further mutations.
           exitStatus = renderRootSync(root, lanes);
@@ -1022,6 +1029,7 @@ export function performConcurrentWorkOnRoot(
         // or, if something suspended, wait to commit it after a timeout.
         root.finishedWork = finishedWork;
         root.finishedLanes = lanes;
+        // commit部分
         finishConcurrentRender(root, exitStatus, finishedWork, lanes);
       }
       break;
@@ -1207,6 +1215,7 @@ function finishConcurrentRender(
         return;
       }
     }
+    // commit
     commitRootWhenReady(
       root,
       finishedWork,
@@ -1335,6 +1344,7 @@ function isRenderConsistentWithExternalStores(finishedWork: Fiber): boolean {
 // the work loop.
 
 function markRootUpdated(root: FiberRoot, updatedLanes: Lanes) {
+  // 在root.pendingLanes上添加updatedLanes
   _markRootUpdated(root, updatedLanes);
 
   if (enableInfiniteRenderLoopDetection) {
@@ -1654,7 +1664,7 @@ function prepareFreshStack(root: FiberRoot, lanes: Lanes): Fiber {
   }
 
   resetWorkInProgressStack();
-  workInProgressRoot = root;
+  workInProgressRoot = root; //
   const rootWorkInProgress = createWorkInProgress(root.current, null);
   workInProgress = rootWorkInProgress;
   workInProgressRootRenderLanes = lanes;
@@ -1733,7 +1743,7 @@ function handleThrow(root: FiberRoot, thrownValue: any): void {
       // SuspendedOnHydration mechanism.
       !includesNonIdleWork(workInProgressRootSkippedLanes) &&
       !includesNonIdleWork(workInProgressRootInterleavedUpdatedLanes)
-        ? // Suspend work loop until data resolves
+        ? // Suspend work loop until data resolves 阻塞直到 data resolve
           SuspendedOnData
         : // Don't suspend work loop, except to check if the data has
           // immediately resolved (i.e. in a microtask). Otherwise, trigger the
@@ -2009,6 +2019,7 @@ function renderRootSync(root: FiberRoot, lanes: Lanes) {
     }
 
     workInProgressTransitions = getTransitionsForLanes(root, lanes);
+    // 如果root和lanes发生了变化就重置调和的上下文
     prepareFreshStack(root, lanes);
   }
 
@@ -2151,6 +2162,7 @@ function renderRootConcurrent(root: FiberRoot, lanes: Lanes) {
 
     workInProgressTransitions = getTransitionsForLanes(root, lanes);
     resetRenderTimer();
+    // 这里对workInProgressRootRenderLanes进行赋值
     prepareFreshStack(root, lanes);
   }
 
@@ -2335,6 +2347,7 @@ function renderRootConcurrent(root: FiberRoot, lanes: Lanes) {
       }
       break;
     } catch (thrownValue) {
+      // 这里catch了 use hook的pending状态，在下一次循环是判断 workInProgressSuspendedReason 来命中 SuspendedOnData，给promise添加回调，在决议后开始调度
       handleThrow(root, thrownValue);
     }
   } while (true);
@@ -2397,13 +2410,19 @@ function performUnitOfWork(unitOfWork: Fiber): void {
     next = beginWork(current, unitOfWork, entangledRenderLanes);
     stopProfilerTimerIfRunningAndRecordDelta(unitOfWork, true);
   } else {
+    // next 为current.child
+    // render
     next = beginWork(current, unitOfWork, entangledRenderLanes);
   }
 
   resetCurrentDebugFiberInDEV();
+  // 设置新的props
   unitOfWork.memoizedProps = unitOfWork.pendingProps;
   if (next === null) {
     // If this doesn't spawn new work, complete the current work.
+    // 
+    // 通过completeWork 生成真实DOM过程
+    // 同时调和节点的兄弟节点
     completeUnitOfWork(unitOfWork);
   } else {
     workInProgress = next;
@@ -2631,6 +2650,7 @@ function completeUnitOfWork(unitOfWork: Fiber): void {
       next = completeWork(current, completedWork, entangledRenderLanes);
     } else {
       startProfilerTimer(completedWork);
+      // completeWork 生成真实的DOM，更新时处理props和DOM
       next = completeWork(current, completedWork, entangledRenderLanes);
       // Update render duration assuming we didn't error.
       stopProfilerTimerIfRunningAndRecordDelta(completedWork, false);
@@ -2883,6 +2903,7 @@ function commitRootImpl(
       // because workInProgressTransitions might have changed between
       // the previous render and commit if we throttle the commit
       // with setTimeout
+      // 通过一次普通调度优先级去执行effect回调
       pendingPassiveTransitions = transitions;
       scheduleCallback(NormalSchedulerPriority, () => {
         flushPassiveEffects();
@@ -2988,6 +3009,7 @@ function commitRootImpl(
 
     // Tell Scheduler to yield at the end of the frame, so the browser has an
     // opportunity to paint.
+    // 绘制
     requestPaint();
 
     executionContext = prevExecutionContext;
@@ -3095,6 +3117,7 @@ function commitRootImpl(
   // currently schedule the callback in multiple places, will wait until those
   // are consolidated.
   if (includesSyncLane(pendingPassiveEffectsLanes) && root.tag !== LegacyRoot) {
+    // 同步lane直接触发effect
     flushPassiveEffects();
   }
 
@@ -3920,6 +3943,7 @@ export function warnAboutUpdateOnNotYetMountedFiberInDEV(fiber: Fiber) {
   }
 }
 
+// begin work才是真正render的地方
 let beginWork;
 if (__DEV__ && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
   const dummyFiber = null;

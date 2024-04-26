@@ -350,6 +350,8 @@ export function reconcileChildren(
 
     // If we had any progressed work already, that is invalid at this point so
     // let's throw it out.
+    // 生成child的节点fiber，child的子节点，需要等到执行child的时候才能生成；这里只是获取child的key、type、props等属性
+    // 以及节点是否新建、复用等，不执行child的渲染函数
     workInProgress.child = reconcileChildFibers(
       workInProgress,
       current.child,
@@ -1054,7 +1056,9 @@ function updateFunctionComponent(
 
   let nextChildren;
   let hasId;
-  prepareToReadContext(workInProgress, renderLanes);
+  // 查询context是否更新，根据fiber.dependencies.firstContext.lanes来判断是否需要更新
+  // provider会给下面使用customer的fiber.dependencies添加lanes
+  prepareToReadContext(workInProgress, renderLanes); 
   if (enableSchedulingProfiler) {
     markComponentRenderStarted(workInProgress);
   }
@@ -1072,6 +1076,7 @@ function updateFunctionComponent(
     hasId = checkDidRenderIdHook();
     setIsRendering(false);
   } else {
+    // 执行函数
     nextChildren = renderWithHooks(
       current,
       workInProgress,
@@ -3456,6 +3461,7 @@ function updateContextProvider(
     }
   }
 
+  //保存context对象以前的值，并设置新的值，在completeWork阶段恢复旧值，并将游标指向了父级context
   pushProvider(workInProgress, context, newValue);
 
   if (enableLazyContextPropagation) {
@@ -3467,6 +3473,7 @@ function updateContextProvider(
     if (oldProps !== null) {
       const oldValue = oldProps.value;
       if (is(oldValue, newValue)) {
+        // 如果value没有变化，同时children没变，直接复用
         // No change. Bailout early if children are the same.
         if (
           oldProps.children === newProps.children &&
@@ -3481,6 +3488,7 @@ function updateContextProvider(
       } else {
         // The context value changed. Search for matching consumers and schedule
         // them to update.
+        // value发生变化，找到 consumer 并安排更新
         propagateContextChange(workInProgress, context, renderLanes);
       }
     }

@@ -231,8 +231,10 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
   // Do not work on any idle work until all the non-idle work has finished,
   // even if the work is suspended.
   const nonIdlePendingLanes = pendingLanes & NonIdleLanes;
+  // 处理非空闲lane
   if (nonIdlePendingLanes !== NoLanes) {
     const nonIdleUnblockedLanes = nonIdlePendingLanes & ~suspendedLanes;
+    // 非空闲不阻塞任务
     if (nonIdleUnblockedLanes !== NoLanes) {
       nextLanes = getHighestPriorityLanes(nonIdleUnblockedLanes);
     } else {
@@ -491,6 +493,7 @@ export function includesNonIdleWork(lanes: Lanes): boolean {
 export function includesOnlyRetries(lanes: Lanes): boolean {
   return (lanes & RetryLanes) === lanes;
 }
+// 判断时候只包含非紧急的lanes
 export function includesOnlyNonUrgentLanes(lanes: Lanes): boolean {
   // TODO: Should hydration lanes be included here? This function is only
   // used in `updateDeferredValueImpl`.

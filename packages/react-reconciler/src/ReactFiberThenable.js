@@ -101,6 +101,7 @@ export function trackUsedThenable<T>(
   const trackedThenables = getThenablesFromState(thenableState);
   const previous = trackedThenables[index];
   if (previous === undefined) {
+    // 将thenable添加进去
     trackedThenables.push(thenable);
   } else {
     if (previous !== thenable) {
