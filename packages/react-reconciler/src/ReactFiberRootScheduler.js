@@ -280,6 +280,7 @@ function processRootScheduleInMicrotask() {
     } else {
       // This root still has work. Keep it in the list.
       prev = root;
+      // 检查是否有同步任务，有就在flushSyncWorkOnAllRoots中执行。
       if (includesSyncLane(nextLanes)) {
         mightHavePendingSyncWork = true;
       }

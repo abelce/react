@@ -150,7 +150,7 @@ export function enqueueConcurrentHookUpdateAndEagerlyBailout<S, A>(
     finishQueueingConcurrentUpdates();
   }
 }
-
+// 将update添加到fiber的queue里
 export function enqueueConcurrentClassUpdate<State>(
   fiber: Fiber,
   queue: ClassQueue<State>,
@@ -246,6 +246,7 @@ function markUpdateLaneFromFiberToRoot(
   }
 }
 
+// 找到sourceFiber的根结点，
 function getRootForUpdatedFiber(sourceFiber: Fiber): FiberRoot | null {
   // TODO: We will detect and infinite update loop and throw even if this fiber
   // has already unmounted. This isn't really necessary but it happens to be the

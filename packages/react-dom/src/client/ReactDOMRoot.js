@@ -227,6 +227,7 @@ export function createRoot(
     onRecoverableError,
     transitionCallbacks,
   );
+  // 在container上添加 __reactContainer 属性
   markContainerAsRoot(root.current, container);
   Dispatcher.current = ReactDOMClientDispatcher;
 
@@ -234,6 +235,7 @@ export function createRoot(
     container.nodeType === COMMENT_NODE
       ? (container.parentNode: any)
       : container;
+  // 添加所有的监听事件
   listenToAllSupportedEvents(rootContainerElement);
 
   // $FlowFixMe[invalid-constructor] Flow no longer supports calling new on functions
