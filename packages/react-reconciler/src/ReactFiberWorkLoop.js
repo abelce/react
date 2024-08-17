@@ -964,6 +964,7 @@ export function performConcurrentWorkOnRoot(
     !includesBlockingLane(root, lanes) &&
     !includesExpiredLane(root, lanes) &&
     (disableSchedulerTimeoutInWorkLoop || !didTimeout);
+  // 真正开始reactrender阶段
   let exitStatus = shouldTimeSlice
     ? renderRootConcurrent(root, lanes)
     : renderRootSync(root, lanes);
@@ -1216,6 +1217,7 @@ function finishConcurrentRender(
       }
     }
     // commit
+    // 真正的commit
     commitRootWhenReady(
       root,
       finishedWork,
@@ -2040,6 +2042,7 @@ function renderRootSync(root: FiberRoot, lanes: Lanes) {
         workInProgressSuspendedReason !== NotSuspended &&
         workInProgress !== null
       ) {
+        // 如果有错误信息就走这个逻辑
         // The work loop is suspended. During a synchronous render, we don't
         // yield to the main thread. Immediately unwind the stack. This will
         // trigger either a fallback or an error boundary.
@@ -2407,6 +2410,7 @@ function performUnitOfWork(unitOfWork: Fiber): void {
   let next;
   if (enableProfilerTimer && (unitOfWork.mode & ProfileMode) !== NoMode) {
     startProfilerTimer(unitOfWork);
+    // next指向unitOfWork的第一个子节点
     next = beginWork(current, unitOfWork, entangledRenderLanes);
     stopProfilerTimerIfRunningAndRecordDelta(unitOfWork, true);
   } else {
@@ -2418,6 +2422,7 @@ function performUnitOfWork(unitOfWork: Fiber): void {
   resetCurrentDebugFiberInDEV();
   // 设置新的props
   unitOfWork.memoizedProps = unitOfWork.pendingProps;
+  // 如果没有子节点，就生成 unitOfWork 的真实dom，或者收集子节点的lanes/childLanes/flags/subflags到unitOfWork上，一直到根节点为止
   if (next === null) {
     // If this doesn't spawn new work, complete the current work.
     // 
@@ -2890,6 +2895,9 @@ function commitRootImpl(
   // might get scheduled in the commit phase. (See #16714.)
   // TODO: Delete all other places that schedule the passive effect callback
   // They're redundant.
+  // Passive表示useEffect的执行回调
+  // Placement表示插入或移动
+  // ChildDeletion表示移除子节点
   if (
     (finishedWork.subtreeFlags & PassiveMask) !== NoFlags ||
     (finishedWork.flags & PassiveMask) !== NoFlags
@@ -2905,6 +2913,7 @@ function commitRootImpl(
       // with setTimeout
       // 通过一次普通调度优先级去执行effect回调
       pendingPassiveTransitions = transitions;
+      //  添加effect处理
       scheduleCallback(NormalSchedulerPriority, () => {
         flushPassiveEffects();
         // This render triggered passive effects: release the root cache pool
@@ -2948,6 +2957,7 @@ function commitRootImpl(
     // The first phase a "before mutation" phase. We use this phase to read the
     // state of the host tree right before we mutate it. This is where
     // getSnapshotBeforeUpdate is called.
+    // 处理getSnapshotBeforeUpdate
     const shouldFireAfterActiveInstanceBlur = commitBeforeMutationEffects(
       root,
       finishedWork,
@@ -2966,6 +2976,7 @@ function commitRootImpl(
     }
 
     // The next phase is the mutation phase, where we mutate the host tree.
+    // 
     commitMutationEffects(root, finishedWork, lanes);
 
     if (enableCreateEventHandleAPI) {
@@ -2992,6 +3003,7 @@ function commitRootImpl(
     if (enableSchedulingProfiler) {
       markLayoutEffectsStarted(lanes);
     }
+    // 执行layout的mount操作
     commitLayoutEffects(finishedWork, root, lanes);
     if (__DEV__) {
       if (enableDebugTracing) {

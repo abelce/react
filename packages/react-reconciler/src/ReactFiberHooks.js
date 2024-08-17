@@ -250,7 +250,7 @@ type BasicStateAction<S> = (S => S) | S;
 type Dispatch<A> = A => void;
 
 // These are set right before calling the component.
-let renderLanes: Lanes = NoLanes;// 在 beginWork阶段的renderWithHooks会设置本次调和的lanes，renderWithHooks结束时设置为NoLanes，在hooks的更新中会根据该值来确定update是否应该执行。
+let renderLanes: Lanes = NoLanes;// 在 beginWork阶段的 renderWithHooks 会设置本次调和的lanes，renderWithHooks结束时设置为NoLanes，在hooks的更新中会根据该值来确定update是否应该执行。
 // The work-in-progress fiber. I've named it differently to distinguish it from
 // the work-in-progress hook.
 let currentlyRenderingFiber: Fiber = (null: any);
@@ -481,8 +481,9 @@ export function renderWithHooks<Props, SecondArg>(
   secondArg: SecondArg,
   nextRenderLanes: Lanes,
 ): any {
-  renderLanes = nextRenderLanes;
-  currentlyRenderingFiber = workInProgress;
+  renderLanes = nextRenderLanes; // renderLanes 在hooks的update阶段会使用，比如useState中用来判断update.lane是否在renderLanes中
+  currentlyRenderingFiber = workInProgress; 
+  // renderLanes、currentlyRenderingFiber都在 finishRenderingHooks 重置
 
   if (__DEV__) {
     hookTypesDev =
@@ -570,6 +571,7 @@ export function renderWithHooks<Props, SecondArg>(
     (workInProgress.mode & StrictLegacyMode) !== NoMode;
 
   shouldDoubleInvokeUserFnsInHooksDEV = shouldDoubleRenderDEV;
+  // 调用函数组件
   let children = Component(props, secondArg);
   shouldDoubleInvokeUserFnsInHooksDEV = false;
 
@@ -616,6 +618,7 @@ function finishRenderingHooks<Props, SecondArg>(
 
   // We can assume the previous dispatcher is always this one, since we set it
   // at the beginning of the render phase and there's no re-entrance.
+  // 重置dispatcher，在函数执行完后再执行hook就会报错
   ReactCurrentDispatcher.current = ContextOnlyDispatcher;
 
   // This check uses currentHook so that it works the same in DEV and prod bundles.
@@ -1291,6 +1294,7 @@ function updateReducerImpl<S, A>(
           currentlyRenderingFiber.lanes,
           updateLane,
         );
+        // 将跳过的优先级添加到 workInProgressRootSkippedLanes 上
         markSkippedUpdateLanes(updateLane);
       } else {
         // This update does have sufficient priority.
@@ -1374,6 +1378,7 @@ function updateReducerImpl<S, A>(
         }
 
         // Process this update.
+        // 执行setState的action
         const action = update.action;
         if (shouldDoubleInvokeUserFnsInHooksDEV) {
           reducer(newState, action);
@@ -1661,6 +1666,7 @@ function updateSyncExternalStore<T>(
     }
 
     if (!isHydrating && !includesBlockingLane(root, renderLanes)) {
+      // 添加一致性检查fiber.flags |= StoreConsistency;
       pushStoreConsistencyCheck(fiber, getSnapshot, nextSnapshot);
     }
   }
@@ -1767,7 +1773,7 @@ function mountStateImpl<S>(initialState: (() => S) | S): Hook {
     pending: null,
     lanes: NoLanes,
     dispatch: null,
-    lastRenderedReducer: basicStateReducer,
+    lastRenderedReducer: basicStateReducer, // setState(() => ''), setState里面的函数是在 lastRenderedReducer 里执行的
     lastRenderedState: (initialState: any),
   };
   hook.queue = queue;
@@ -2396,7 +2402,7 @@ function updateEffectImpl(
   currentlyRenderingFiber.flags |= fiberFlags;
 
   hook.memoizedState = pushEffect(
-    HookHasEffect | hookFlags,
+    HookHasEffect | hookFlags, // 如果是useEffect就是 HookHasEffect | LayoutEffect
     create,
     inst,
     nextDeps,

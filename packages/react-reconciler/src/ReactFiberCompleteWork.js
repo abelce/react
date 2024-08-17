@@ -738,6 +738,7 @@ function cutOffTailIfNeeded(
   }
 }
 // 合并所有child的childLanes到completedWork上，同时设置child.return = completedWork
+// 以及falgs和subtreeFlags到return组件上
 function bubbleProperties(completedWork: Fiber) {
   const didBailout =
     completedWork.alternate !== null &&
@@ -1276,6 +1277,7 @@ function completeWork(
           // Certain renderers require commit-time effects for initial mount.
           // (eg DOM renderer supports auto-focus for certain elements).
           // Make sure such renderers get scheduled for later work.
+
           // finalizeInitialChildren 设置元素的属性
           if (
             finalizeInitialChildren(

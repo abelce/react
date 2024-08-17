@@ -140,6 +140,7 @@ function legacyCreateRootFromDOMContainer(
     return root;
   } else {
     // First clear any existing content.
+    // 清空container的内容
     clearContainer(container);
 
     if (typeof callback === 'function') {

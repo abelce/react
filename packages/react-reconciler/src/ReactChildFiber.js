@@ -420,8 +420,8 @@ function createChildReconciler(
     }
     const deletions = returnFiber.deletions;
     if (deletions === null) {
-      returnFiber.deletions = [childToDelete];
-      returnFiber.flags |= ChildDeletion;
+      returnFiber.deletions = [childToDelete]; // 添加需要删除的child fiber
+      returnFiber.flags |= ChildDeletion; // 添加child删除标志
     } else {
       deletions.push(childToDelete); // 添加需要删除的fiber节点
     }
@@ -493,14 +493,17 @@ function createChildReconciler(
       const oldIndex = current.index;
       if (oldIndex < lastPlacedIndex) {
         // This is a move.
+        // 老的位置在新的位置前面，表示节点后移
         newFiber.flags |= Placement | PlacementDEV;
         return lastPlacedIndex;
       } else {
+        // 大于的情况在老的元素前面有一个null，导致oldIndex比lastPlacedIndex大
         // This item can stay in place.
         return oldIndex;
       }
     } else {
       // This is an insertion.
+      // 新增节点
       newFiber.flags |= Placement | PlacementDEV;
       return lastPlacedIndex;
     }
@@ -813,6 +816,7 @@ function createChildReconciler(
       switch (newChild.$$typeof) {
         case REACT_ELEMENT_TYPE: {
           if (newChild.key === key) {
+            // key 相等直接复用，否则直接返回null
             return updateElement(
               returnFiber,
               oldFiber,
@@ -1125,6 +1129,7 @@ function createChildReconciler(
       } else {
         nextOldFiber = oldFiber.sibling;
       }
+      // 根据index对应的元素创建fiber，看能否复用
       const newFiber = updateSlot(
         returnFiber,
         oldFiber,
@@ -1132,6 +1137,7 @@ function createChildReconciler(
         lanes,
         debugInfo,
       );
+      // 如果不用能复用，就直接中断
       if (newFiber === null) {
         // TODO: This breaks on empty slots like null children. That's
         // unfortunate because it triggers the slow path all the time. We need
@@ -1164,6 +1170,7 @@ function createChildReconciler(
       oldFiber = nextOldFiber;
     }
 
+    // 如果新的children遍历完成，删除剩余的老节点
     if (newIdx === newChildren.length) {
       // We've reached the end of the new children. We can delete the rest.
       deleteRemainingChildren(returnFiber, oldFiber);
@@ -1173,7 +1180,7 @@ function createChildReconciler(
       }
       return resultingFirstChild;
     }
-
+    // 如果老节点遍历完成，添加所有新节点
     if (oldFiber === null) {
       // If we don't have any more existing children we can choose a fast path
       // since the rest will all be insertions.
@@ -1185,8 +1192,10 @@ function createChildReconciler(
           debugInfo,
         );
         if (newFiber === null) {
+          // 这里丢掉 null，这里就能解释 placeChild 中  oldIndex > lastPlacedIndex的情况
           continue;
         }
+        // 
         lastPlacedIndex = placeChild(newFiber, lastPlacedIndex, newIdx);
         if (previousNewFiber === null) {
           // TODO: Move out of the loop. This only happens for the first run.
@@ -1204,9 +1213,11 @@ function createChildReconciler(
     }
 
     // Add all children to a key map for quick lookups.
+    // 使用剩余的老fiber的key和index建立一个map
     const existingChildren = mapRemainingChildren(returnFiber, oldFiber);
 
     // Keep scanning and use the map to restore deleted items as moves.
+    // 遍历剩余的新元素，通过key活着newIdx来进行复用
     for (; newIdx < newChildren.length; newIdx++) {
       const newFiber = updateFromMap(
         existingChildren,
@@ -1241,6 +1252,7 @@ function createChildReconciler(
     if (shouldTrackSideEffects) {
       // Any existing children that weren't consumed above were deleted. We need
       // to add them to the deletion list.
+      // 删除没有复用的老fiber
       existingChildren.forEach(child => deleteChild(returnFiber, child));
     }
 
@@ -1542,6 +1554,7 @@ function createChildReconciler(
           }
         }
         // Didn't match.
+        // 如果不匹配就删除child节点，
         deleteRemainingChildren(returnFiber, child);
         break;
       } else {

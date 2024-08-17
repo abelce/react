@@ -23,7 +23,7 @@ export const Update = /*                       */ 0b0000000000000000000000000100
 /* Skipped value:                                 0b0000000000000000000000001000; */
 
 export const ChildDeletion = /*                */ 0b0000000000000000000000010000;
-export const ContentReset = /*                 */ 0b0000000000000000000000100000;
+export const ContentReset = /*                 */ 0b0000000000000000000000100000; // 清楚HostComponent组件的内容
 export const Callback = /*                     */ 0b0000000000000000000001000000;
 /* Used by DidCapture:                            0b0000000000000000000010000000; */
 
@@ -34,7 +34,7 @@ export const Passive = /*                      */ 0b0000000000000000100000000000
 /* Used by Hydrating:                             0b0000000000000001000000000000; */
 
 export const Visibility = /*                   */ 0b0000000000000010000000000000;
-export const StoreConsistency = /*             */ 0b0000000000000100000000000000;
+export const StoreConsistency = /*             */ 0b0000000000000100000000000000; // useSyncExternalStore
 
 // It's OK to reuse these bits because these flags are mutually exclusive for
 // different fiber types. We should really be doing this for as many flags as

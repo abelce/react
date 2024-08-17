@@ -257,7 +257,7 @@ function processRootScheduleInMicrotask() {
       // preserve the scroll position of the previous page.
       upgradePendingLaneToSync(root, currentEventTransitionLane);
     }
-
+    //PS: 真正的调和过程在 scheduleTaskForRootDuringMicrotask中进行，然后返回下次需要调和额优先级
     const nextLanes = scheduleTaskForRootDuringMicrotask(root, currentTime);
     if (nextLanes === NoLane) {
       // This root has no more pending work. Remove it from the schedule. To
@@ -280,7 +280,7 @@ function processRootScheduleInMicrotask() {
     } else {
       // This root still has work. Keep it in the list.
       prev = root;
-      // 检查是否有同步任务，有就在flushSyncWorkOnAllRoots中执行。
+      // 检查是否有同步任务，有就在 flushSyncWorkOnAllRoots 中执行。
       if (includesSyncLane(nextLanes)) {
         mightHavePendingSyncWork = true;
       }

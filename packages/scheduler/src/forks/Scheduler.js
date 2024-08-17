@@ -223,7 +223,7 @@ function workLoop(initialTime: number) {
           // $FlowFixMe[incompatible-call] found when upgrading Flow
           markTaskYield(currentTask, currentTime);
         }
-        // 再次将过期的task加入taskQueue
+        // 再次将timer的task加入taskQueue
         advanceTimers(currentTime);
         return true;
       } else {
@@ -248,7 +248,7 @@ function workLoop(initialTime: number) {
   if (currentTask !== null) {
     return true;
   } else {
-    //taskQueue执行完后，将排队任务里的第一个任务拿出来进行倒计时，用于触发下一次调度
+    // taskQueue 执行完后，将排队任务里的第一个任务拿出来进行倒计时，用于触发下一次调度
     const firstTimer = peek(timerQueue);
     if (firstTimer !== null) {
       requestHostTimeout(handleTimeout, firstTimer.startTime - currentTime);

@@ -804,6 +804,7 @@ function commitHookLayoutEffects(finishedWork: Fiber, hookFlags: HookFlags) {
     recordLayoutEffectDuration(finishedWork);
   } else {
     try {
+      // 执行Layout的mount操作
       commitHookEffectListMount(hookFlags, finishedWork);
     } catch (error) {
       captureCommitPhaseError(finishedWork, finishedWork.return, error);
@@ -974,6 +975,7 @@ function commitHostComponentMount(finishedWork: Fiber) {
   const props = finishedWork.memoizedProps;
   const instance: Instance = finishedWork.stateNode;
   try {
+    // 设置组件的focus，img.src
     commitMount(instance, type, props, finishedWork);
   } catch (error) {
     captureCommitPhaseError(finishedWork, finishedWork.return, error);
@@ -1074,6 +1076,7 @@ function commitLayoutEffectOnFiber(
         committedLanes,
       );
       if (flags & Update) {
+        // 执行didMount/didMount
         commitClassLayoutLifecycles(finishedWork, current);
       }
 
@@ -1136,6 +1139,7 @@ function commitLayoutEffectOnFiber(
     }
     case HostSingleton:
     case HostComponent: {
+      // 子组件的layoutMount
       recursivelyTraverseLayoutEffects(
         finishedRoot,
         finishedWork,
@@ -1146,6 +1150,7 @@ function commitLayoutEffectOnFiber(
       // (eg DOM renderer may schedule auto-focus for inputs and form controls).
       // These effects should only be committed when components are first mounted,
       // aka when there is no current/alternate.
+      // 组件第一次渲染时执行
       if (current === null && flags & Update) {
         commitHostComponentMount(finishedWork);
       }
@@ -1754,6 +1759,7 @@ function isHostParent(fiber: Fiber): boolean {
   );
 }
 
+// 查找fiber的第一个没有Palcement标签的兄弟节点，如果找不到就向父级节点开始查找，知道找到为止，否则返回null（通常会找到root节点为止）
 function getHostSibling(fiber: Fiber): ?Instance {
   // We're going to search forward into the tree until we find a sibling host
   // node. Unfortunately, if multiple insertions are done in a row we have to
@@ -1781,20 +1787,24 @@ function getHostSibling(fiber: Fiber): ?Instance {
     ) {
       // If it is not host node and, we might have a host node inside it.
       // Try to search down until we find one.
+      // 如果node不是原生dom节点，并且node上含有Placement标签，就找node的兄弟节点
       if (node.flags & Placement) {
         // If we don't have a child, try the siblings instead.
         continue siblings;
       }
       // If we don't have a child, try the siblings instead.
       // We also skip portals because they are not part of this host tree.
+      // 如果node没有子节点，也找node的兄弟节点
       if (node.child === null || node.tag === HostPortal) {
         continue siblings;
       } else {
+        // 否则查找node的子节点
         node.child.return = node;
         node = node.child;
       }
     }
     // Check if this host node is stable or about to be placed.
+    // 一直找到没有Placement标签的Host组件为止
     if (!(node.flags & Placement)) {
       // Found it!
       return node.stateNode;
@@ -1833,15 +1843,17 @@ function commitPlacement(finishedWork: Fiber): void {
     case HostComponent: {
       const parent: Instance = parentFiber.stateNode;
       if (parentFiber.flags & ContentReset) {
+        // 清楚组件的内容
         // Reset the text content of the parent before doing any insertions
         resetTextContent(parent);
         // Clear ContentReset from the effect tag
         parentFiber.flags &= ~ContentReset;
       }
-
+      // 找到节点要插入的位置，如果找不到就查到最后
       const before = getHostSibling(finishedWork);
       // We only have the top Fiber that was inserted but we need to recurse down its
       // children to find all the terminal nodes.
+      // 插入节点
       insertOrAppendPlacementNode(finishedWork, before, parent);
       break;
     }
@@ -1961,6 +1973,7 @@ function commitDeletionEffects(
     // TODO: Instead of searching up the fiber return path on every deletion, we
     // can track the nearest host component on the JS stack as we traverse the
     // tree during the commit phase. This would make insertions faster, too.
+    // 这里是找到当前分支最顶层的host节点，然后通过hostParent来删除后代节点
     let parent: null | Fiber = returnFiber;
     findParent: while (parent !== null) {
       switch (parent.tag) {
@@ -1989,7 +2002,7 @@ function commitDeletionEffects(
           'a bug in React. Please file an issue.',
       );
     }
-
+    // 执行删除fiber节点上的effect的destory操作
     commitDeletionEffectsOnFiber(root, returnFiber, deletedFiber);
     hostParent = null;
     hostParentIsContainer = false;
@@ -1997,7 +2010,7 @@ function commitDeletionEffects(
     // Detach refs and call componentWillUnmount() on the whole subtree.
     commitDeletionEffectsOnFiber(root, returnFiber, deletedFiber);
   }
-
+  // 设置fiber.return = null
   detachFiberMutation(deletedFiber);
 }
 
@@ -2077,6 +2090,7 @@ function commitDeletionEffectsOnFiber(
       if (!offscreenSubtreeWasHidden) {
         safelyDetachRef(deletedFiber, nearestMountedAncestor);
       }
+      // 这里没有break/return，所以节点删除操作是在下一个case中进行的
       // Intentional fallthrough to next branch
     }
     case HostText: {
@@ -2183,6 +2197,7 @@ function commitDeletionEffectsOnFiber(
         const updateQueue: FunctionComponentUpdateQueue | null =
           (deletedFiber.updateQueue: any);
         if (updateQueue !== null) {
+          // 通过 updateQueue.lastEffect 执行effect的destory操作
           const lastEffect = updateQueue.lastEffect;
           if (lastEffect !== null) {
             const firstEffect = lastEffect.next;
@@ -2195,6 +2210,7 @@ function commitDeletionEffectsOnFiber(
               if (destroy !== undefined) {
                 if ((tag & HookInsertion) !== NoHookEffect) {
                   inst.destroy = undefined;
+                  // 调用 destory
                   safelyCallDestroy(
                     deletedFiber,
                     nearestMountedAncestor,
@@ -2233,7 +2249,7 @@ function commitDeletionEffectsOnFiber(
           }
         }
       }
-
+      // 删除deletedFiber的子节点
       recursivelyTraverseDeletionEffects(
         finishedRoot,
         nearestMountedAncestor,
@@ -2522,10 +2538,12 @@ function recursivelyTraverseMutationEffects(
   }
 
   const prevDebugFiber = getCurrentDebugFiberInDEV();
+  // 对parentFiber的子节点的effect执行destory操作
   if (parentFiber.subtreeFlags & MutationMask) {
     let child = parentFiber.child;
     while (child !== null) {
       setCurrentDebugFiberInDEV(child);
+      // 
       commitMutationEffectsOnFiber(child, root, lanes);
       child = child.sibling;
     }
@@ -2551,16 +2569,21 @@ function commitMutationEffectsOnFiber(
     case ForwardRef:
     case MemoComponent:
     case SimpleMemoComponent: {
+      // 递归处理节点的effect的destory，一直到叶子节点为止
       recursivelyTraverseMutationEffects(root, finishedWork, lanes);
+      // 插入、移动节点
       commitReconciliationEffects(finishedWork);
-
+      // 原生组件属性和内容有更新
       if (flags & Update) {
+        // 通过在host组件的属性和内容有变化时会触发该逻辑
         try {
+          // 如果存在Update标签，就执行unmount操作
           commitHookEffectListUnmount(
-            HookInsertion | HookHasEffect,
+            HookInsertion | HookHasEffect, // 处理useInsertEffect
             finishedWork,
             finishedWork.return,
           );
+          // 重新执行effect回调，以及新建destory操作
           commitHookEffectListMount(
             HookInsertion | HookHasEffect,
             finishedWork,
@@ -2587,6 +2610,8 @@ function commitMutationEffectsOnFiber(
           recordLayoutEffectDuration(finishedWork);
         } else {
           try {
+            // layoutUumount操作，mount操作在绘制之后执行
+            // 处理LayoutEffect
             commitHookEffectListUnmount(
               HookLayout | HookHasEffect,
               finishedWork,
@@ -3136,6 +3161,7 @@ export function disappearLayoutEffects(finishedWork: Fiber) {
       if (shouldProfile(finishedWork)) {
         try {
           startLayoutEffectTimer();
+          
           commitHookEffectListUnmount(
             HookLayout,
             finishedWork,
@@ -3145,6 +3171,7 @@ export function disappearLayoutEffects(finishedWork: Fiber) {
           recordLayoutEffectDuration(finishedWork);
         }
       } else {
+        // 执行函数组件的LayoutMount操作
         commitHookEffectListUnmount(
           HookLayout,
           finishedWork,
@@ -4219,6 +4246,7 @@ function commitHookPassiveUnmountEffects(
   }
 }
 
+// 递归调用
 function recursivelyTraversePassiveUnmountEffects(parentFiber: Fiber): void {
   // Deletions effects can be scheduled on any fiber type. They need to happen
   // before the children effects have fired.
@@ -4236,6 +4264,7 @@ function recursivelyTraversePassiveUnmountEffects(parentFiber: Fiber): void {
         );
       }
     }
+    // 删除fiber alternate上的数据
     detachAlternateSiblings(parentFiber);
   }
 
@@ -4257,8 +4286,10 @@ function commitPassiveUnmountOnFiber(finishedWork: Fiber): void {
     case FunctionComponent:
     case ForwardRef:
     case SimpleMemoComponent: {
+      // 对delete操作的fiber进行删除
       recursivelyTraversePassiveUnmountEffects(finishedWork);
       if (finishedWork.flags & Passive) {
+        // 执行unmount操作
         commitHookPassiveUnmountEffects(
           finishedWork,
           finishedWork.return,
@@ -4363,7 +4394,7 @@ export function disconnectPassiveEffect(finishedWork: Fiber): void {
     }
   }
 }
-
+// 删除fiber及其子fiber
 function commitPassiveUnmountEffectsInsideOfDeletedTree_begin(
   deletedSubtreeRoot: Fiber,
   nearestMountedAncestor: Fiber | null,

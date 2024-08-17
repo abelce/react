@@ -337,6 +337,7 @@ export function reconcileChildren(
     // won't update its child set by applying minimal side-effects. Instead,
     // we will add them all to the child before it gets rendered. That means
     // we can optimize this reconciliation pass by not tracking side-effects.
+    // mount阶段，直接创建子fiber
     workInProgress.child = mountChildFibers(
       workInProgress,
       null,
@@ -1090,7 +1091,7 @@ function updateFunctionComponent(
   if (enableSchedulingProfiler) {
     markComponentRenderStopped();
   }
-
+  // 判断是否需要更新，如果是消费了的context有个更新，那么 didReceiveUpdate 已经在beginWork开始时就设置为true
   if (current !== null && !didReceiveUpdate) {
     bailoutHooks(current, workInProgress, renderLanes);
     return bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes);
@@ -1706,6 +1707,7 @@ function mountLazyComponent(
         resolvedProps,
         renderLanes,
       );
+      // 返回第一个子元素
       return child;
     }
     case ClassComponent: {
@@ -4064,6 +4066,7 @@ function beginWork(
         workInProgress.elementType === Component
           ? unresolvedProps
           : resolveDefaultProps(Component, unresolvedProps);
+          // 完成后返回第一个子元素
       return updateFunctionComponent(
         current,
         workInProgress,
