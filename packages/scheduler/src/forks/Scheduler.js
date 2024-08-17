@@ -540,6 +540,7 @@ if (typeof localSetImmediate === 'function') {
   // We prefer MessageChannel because of the 4ms setTimeout clamping.
   const channel = new MessageChannel();
   const port = channel.port2;
+  // 这里通过dom0级事件隐式调用了post.start()事件
   channel.port1.onmessage = performWorkUntilDeadline;
   schedulePerformWorkUntilDeadline = () => {
     port.postMessage(null);

@@ -257,7 +257,7 @@ function processRootScheduleInMicrotask() {
       // preserve the scroll position of the previous page.
       upgradePendingLaneToSync(root, currentEventTransitionLane);
     }
-    //PS: 真正的调和过程在 scheduleTaskForRootDuringMicrotask中进行，然后返回下次需要调和额优先级
+    //PS: 真正的调和过程在 scheduleTaskForRootDuringMicrotask中进行，然后返回下次需要调和的优先级
     const nextLanes = scheduleTaskForRootDuringMicrotask(root, currentTime);
     if (nextLanes === NoLane) {
       // This root has no more pending work. Remove it from the schedule. To
