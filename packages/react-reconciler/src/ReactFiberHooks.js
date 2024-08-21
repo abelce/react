@@ -2402,7 +2402,7 @@ function updateEffectImpl(
   currentlyRenderingFiber.flags |= fiberFlags;
 
   hook.memoizedState = pushEffect(
-    HookHasEffect | hookFlags, // 如果是useEffect就是 HookHasEffect | LayoutEffect
+    HookHasEffect | hookFlags, // 如果是useEffect就是 HookHasEffect | LayoutEffect | HookPassive
     create,
     inst,
     nextDeps,

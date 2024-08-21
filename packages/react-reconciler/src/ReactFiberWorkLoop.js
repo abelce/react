@@ -2598,6 +2598,7 @@ function throwAndUnwindWorkLoop(
     // Unwind the stack until we reach the nearest boundary.
     unwindUnitOfWork(unitOfWork);
   } else {
+    // Lazy组建走这个逻辑
     // Although the fiber suspended, we're intentionally going to commit it in
     // an inconsistent state. We can do this safely in cases where we know the
     // inconsistent tree will be hidden.

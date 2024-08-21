@@ -360,10 +360,12 @@ function throwException(
       }
 
       // Mark the nearest Suspense boundary to switch to rendering a fallback.
+      // 获取最近的Suspense
       const suspenseBoundary = getSuspenseHandler();
       if (suspenseBoundary !== null) {
         switch (suspenseBoundary.tag) {
           case SuspenseComponent: {
+              // 给suspense组建添加DidCapture标记，并添加retry
             // If this suspense boundary is not already showing a fallback, mark
             // the in-progress render as suspended. We try to perform this logic
             // as soon as soon as possible during the render phase, so the work
@@ -400,6 +402,7 @@ function throwException(
             }
 
             suspenseBoundary.flags &= ~ForceClientRender;
+          
             markSuspenseBoundaryShouldCapture(
               suspenseBoundary,
               returnFiber,
@@ -443,6 +446,7 @@ function throwException(
               // Suspense always commits fallbacks synchronously, so there are
               // no pings.
               if (suspenseBoundary.mode & ConcurrentMode) {
+                //  给value设置ping，在reslove后调用 ensureRootIsScheduled重新渲染
                 attachPingListener(root, wakeable, rootRenderLanes);
               }
             }

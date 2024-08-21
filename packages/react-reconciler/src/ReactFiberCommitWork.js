@@ -2959,6 +2959,7 @@ function commitMutationEffectsOnFiber(
         const retryQueue: RetryQueue | null = (finishedWork.updateQueue: any);
         if (retryQueue !== null) {
           finishedWork.updateQueue = null;
+          // 给weakable添加then回调，成功后调用ensureRootIsSchulded 
           attachSuspenseRetryListeners(finishedWork, retryQueue);
         }
       }
